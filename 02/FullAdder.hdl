@@ -1,0 +1,23 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/02/FullAdder.hdl
+
+/**
+ * Computes the sum of three bits.
+ */
+
+CHIP FullAdder {
+    IN a, b, c;  // 1-bit inputs
+    OUT sum,     // Right bit of a + b + c
+        carry;   // Left bit of a + b + c
+
+    // 只要有奇数个 1，那么 sum 为 1，只要有 两个以上个 1，那么 carry 为 1
+    // 问题：如何以通用的，无视输入顺序的方式，得到 1 的数量
+    // 
+    // 我一开始的想法想多了，根本不用考虑那么多溢出的情况
+    PARTS:
+    HalfAdder(a=a, b=b, sum=s1, carry=c1);
+    HalfAdder(a=s1, b=c, sum=sum, carry=c2);
+    Xor(a=c1, b=c2, out=carry);
+}

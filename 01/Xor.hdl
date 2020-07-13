@@ -1,0 +1,34 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/01/Xor.hdl
+
+/**
+ * Exclusive-or gate:
+ * out = not (a == b)
+ */
+
+CHIP Xor {
+    IN a, b;
+    OUT out;
+
+    // 需要两者并不相同，那么才为真
+    // 如果两者相同，那么必定是 0 0，或者是 1 1
+    PARTS:
+    Not(in=a, out=na);
+    Not(in=b, out=nb);
+    And(a=na, b=nb, out=andn);
+    And(a=a, b=b, out=and);
+    Or(a=andn, b=and, out=tmpout);
+    Not(in=tmpout, out=out);
+
+/* 要删除该条注释，只需要在末尾加上斜杠即可 *
+    // 或者处理可能存在的 0 1 和 1 0 的状况，只要有一者存在，那么结果为真
+    PARTS:
+    Not(in=a, out=na);
+    Not(in=b, out=nb);
+    And(a=a, b=nb, out=o1);
+    And(a=b, b=na, out=o2);
+    Or(a=o1, b=o2, out=out);
+    /**/
+}

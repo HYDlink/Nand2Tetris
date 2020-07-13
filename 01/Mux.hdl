@@ -1,0 +1,26 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/01/Mux.hdl
+
+/** 
+ * Multiplexor:
+ * out = a if sel == 0
+ *       b otherwise
+ */
+
+CHIP Mux {
+    IN a, b, sel;
+    OUT out;
+
+    PARTS:
+    // 假设使用 And 门来做，
+    // And(b, sel, out) 会让 out 当 sel 为 1 时，得到 b 的结果，否则得到 0
+    // 但是怎么进行选择划分呢
+    // 那么我选择获取两者的选择结果，然后通过 Or 进行筛选，因为没有被选择的结果一定是 0
+    // 标准答案还真是这样 hhhhh
+    Not(in=sel, out=notsel);
+    And(a=notsel, b=a, out=sela);
+    And(a=sel, b=b, out=selb);
+    Or(a=sela, b=selb, out=out);
+}

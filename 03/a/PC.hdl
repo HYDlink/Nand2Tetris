@@ -1,0 +1,35 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/03/a/PC.hdl
+
+/**
+ * A 16-bit counter with load and reset control bits.
+ * if      (reset[t] == 1) out[t+1] = 0
+ * else if (load[t] == 1)  out[t+1] = in[t]
+ * else if (inc[t] == 1)   out[t+1] = out[t] + 1  (integer addition)
+ * else                    out[t+1] = out[t]
+ */
+
+CHIP PC {
+    IN in[16],load,inc,reset;
+    OUT out[16];
+
+    PARTS:
+    // 从逻辑流最底层往上走
+    Mux16(a=preOut, b=incOut, sel=inc, out=o1);
+    Mux16(a=o1, b=in, sel=load, out=o2);
+    Mux16(a=o2, b=false, sel=reset, out=curOut);
+
+    // 检查是否要对寄存器
+    Or(a=reset, b=load, out=l1);
+    Or(a=l1, b=inc, out=l2);
+
+    // 采用寄存器保存之前的输出结果，然后进行时序性输出
+    Register(in=curOut, load=l2, out=out, out=preOut);
+
+    // 按照时序性的话，
+    // 应该是现在当前时间 t 就计算好增量结果，然后再到 t+1 的时间来通过 inc 确定是否采用这个结果
+    // 放在最开头计算也没有影响，因为 preOut 在开头语句中并没有改变，还是 out[t] 
+    Inc16(in=preOut, out=incOut);
+}

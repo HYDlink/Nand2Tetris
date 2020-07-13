@@ -1,0 +1,22 @@
+*.vm
+*.tst
+*.cmp
+*.out
+*.jack
+*.hack
+gen.lua
+
+# Ch06 test files
+/06/add
+/06/max
+/06/pong
+/06/rect
+
+/00
+/08
+/09
+/10
+/11
+/12
+/13
+/demo

@@ -1,12 +1,12 @@
-Parser = require 'Parser'
+VMParser = require 'vmParser'
 AsmParser = require 'asmParser'
 
 inputFileName = arg[1]
 inputFile = io.open(inputFileName, 'r')
 inputText = inputFile:read('a')
-parser = Parser(inputText)
+vmParser = VMParser(inputText)
 
-asm = parser:output()
+asm = vmParser:output()
 
 asmOutputFileName = inputFileName:gsub("%.%S*", '.asm')
 asmOutputFile = io.open(asmOutputFileName, 'w')

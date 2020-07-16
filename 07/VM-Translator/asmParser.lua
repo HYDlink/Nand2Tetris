@@ -30,9 +30,26 @@ function Parser:init(str)
     self:parse()
 end
 
+-- 直接按顺序填入
+local builtinSymbols = {
+    "SP",
+    "LCL",
+    "ARG",
+    "THIS",
+    "THAT"
+}
+
 function Parser:getSymbols()
+    -- 预先添加内置符号
+    self.symbols = {}
+    for i, v in ipairs(builtinSymbols) do
+        -- 因为内置符号起始索引是 0，而 table 起始索引是 1，因此 - 1
+        self.symbols[v] = i - 1
+    end
+
     -- 指令计数器，就命名成 pc 了，代表当前指令的地址，如果当前行是 label，那么就代表下一行指令的地址
     local pc = 0
+
     for line in string.gmatch(self.simplifiedCode, "[^\r\n]+") do
         if line:sub(1, 1) == "(" and line:sub(-1, -1) == ")" then
             local label = line:sub(2, -2)
@@ -44,14 +61,21 @@ function Parser:getSymbols()
 
     -- 再一次遍历，查找所有非 label 符号，并赋予地址
     -- 当前也可以在第一次遍历的时候就这么做，只不过之后分配的地址会不一样，这个倒是不怎么影响程序的运行实现
-    local addr = 0
+
+    -- RAM 地址 0 ~ 15 已经被 VM 占用，用户自己的符号，只能分配在 RAM[16] 及以后了
+    local addr = 16
     for line in string.gmatch(self.simplifiedCode, "[^\r\n]+") do
         if line:sub(1, 1) == "@" and (line:find("%a")) == 2 then
             local symbol = line:sub(2)
             -- 先设置成 -1 意义为 undefined
             if self.symbols[symbol] == nil then
-                self.symbols[symbol] = addr
-                addr = addr + 1
+                -- 解析 R 后面直接带数字的符号，后面的数字即是地址
+                if symbol:match("R%d+") == symbol then
+                    self.symbols[symbol] = tonumber(symbol:match("%d+"))
+                else
+                    self.symbols[symbol] = addr
+                    addr = addr + 1
+                end
             end
         end
     end
@@ -66,7 +90,7 @@ function Parser:replaceSymbol()
 end
 
 function Parser:parse()
-    self.compiled = {}  -- 每一行汇编代码转换后的机器码，最后会使用 table.concat 来合并
+    self.compiled = {} -- 每一行汇编代码转换后的机器码，最后会使用 table.concat 来合并
     -- 对每行进行解析
     for line in string.gmatch(self.symbolLessCode, "[^\r\n]+") do
         local commandType
@@ -101,11 +125,17 @@ function Parser:parse()
                 destCompiled = table.concat(destCompiledTable)
             end
 
-            code = "111" .. (keyword.comp[compute] or "0000000") .. destCompiled .. (keyword.jump[jump] or "000")
+            local computeCompiled = keyword.comp[compute] or "0000000"
+            if computeCompiled == "0000000" then
+                print(compute)
+            end
+            local jumpCompiled = keyword.jump[jump] or "000"
+
+            code = "111" .. computeCompiled .. destCompiled .. jumpCompiled
         end
         table.insert(self.compiled, code)
     end
-    print('Parse Compelete!')
+    print("Parse Compelete!")
 end
 
 --- @return string

@@ -27,7 +27,7 @@ local compareOP = {
     ["gt"] = "JGT",
     ["ge"] = "JGE",
     ["eq"] = "JEQ",
-    ["ne"] = "JNE",
+    ["ne"] = "JNE"
 }
 
 --- @param str string
@@ -36,43 +36,82 @@ function Parser:init(str)
     self:parse()
 end
 
---- @param addr string 
+local translate = {
+    -- 将寄存器 D 中的值，压入栈中
+    push = [[
+@SP
+A = M
+M = D
+@SP
+M = M + 1]],
+    -- 将栈顶中的值，弹出，并放入 D 中
+    pop = [[
+@SP
+AM = M - 1
+D = M]]
+}
+
+local staticStart = 256
+local maxStaticCount = 0
+
+--- 最后会将结果地址放入 A 寄存器中
+--- @param addr string
 --- @param offset number
-local function addrOffset(addr, offset)
-    return string.format([[@%s
+local function addrOffset(addrWord, offset)
+    if addrWord == "temp" then
+        -- 5 是 temp 段开始的位置
+        local addr = 5 + tonumber(offset)
+        return string.format("@%d\n", addr)
+    elseif addrWord == "static" then
+        -- TODO static 处理
+        local offsetNum = tonumber(offset)
+        maxStaticCount = math.max(offsetNum, maxStaticCount)
+        local addr = staticStart + offsetNum
+        return string.format("@%d\n", addr)
+    elseif addrWord == "pointer" then
+        return offset == "0" and "@THIS\n" or "@THAT\n"
+    else
+        local addr = addressTrans[addrWord]
+        return string.format([[@%s
 D = M
 @%s
 A = D + A
-D = M
 ]], addr, offset)
+    end
 end
 
---- @param cop string 
---- @param index number
+--- 跳转指令的完全翻译
+--- @param cop string 条件跳转的汇编命令
+--- @param index number 第几个跳转指令，用于特化标签
 local function compareString(cop, index)
-    return 
-        [[@SP
-AM = M - 1
-D = M
+    return translate.pop .. [[
+
 @SP
 A = M - 1
 D = M - D
-@TRUE]].. index .. [[
+@TRUE]] ..
+        index ..
+            [[
 
-D; ]] .. cop .. [[
+D; ]] ..
+                cop ..
+                    [[
 
 @SP
 A = M - 1
 M = 0
-@CONTINUE]].. index .. [[
+@CONTINUE]] ..
+                        index ..
+                            [[
 
 0;JMP
-(TRUE]].. index .. [[)
+(TRUE]] .. index .. [[)
 @SP
 A = M - 1
 M = -1
-(CONTINUE]].. index .. [[)]]
+(CONTINUE]] .. index .. [[)]]
 end
+
 
 function Parser:parse()
     self.compiled = {}
@@ -85,33 +124,26 @@ function Parser:parse()
         end
 
         if words[1] == "push" then
-            -- constant 才是
+            -- constant 表示直接将立即数压入栈中
             if words[2] == "constant" then
                 code = string.format([[@%s
 D = A
-]], words[3])
+]], words[3]) .. translate.push
             else
                 local offset = words[3]
-                code = addrOffset(words[2], offset)
+                code = addrOffset(words[2], offset) .. "D = M\n" .. translate.push
             end
-            code = code .. [[
-@SP
-A = M
-M = D
-@SP
-M = M + 1]]
         elseif words[1] == "pop" then
             local offset = words[3]
-            local addr = addressTrans[words[2]]
-            code = addrOffset(addr, offset) .. [[
+            -- 需要先将 目标写入地址 记录，然后再弹出数据，再取出目标地址，对其进行写入
+            code = addrOffset(words[2], offset) .. string.format([[
 D = A
 @R13
 M = D
-@SP
-M = M - 1
-D = M
+%s
 @R13
-M = D]]
+A = M
+M = D]], translate.pop)
         else
             local cop = compareOP[words[1]]
             local bop = binaryOP[words[1]]
@@ -120,12 +152,11 @@ M = D]]
                 code = compareString(cop, copareIndex)
                 copareIndex = copareIndex + 1
             elseif bop then
-                code = [[@SP
-AM = M - 1
-D = M
+                code = translate.pop .. [[
+
 @SP
 A = M - 1
-M = M]] .. bop .. [[D]]
+M = M ]] .. bop .. [[ D]]
             else
                 code = [[@SP
 A = M - 1
@@ -133,7 +164,7 @@ M =]] .. uop .. [[M]]
             end
         end
         -- 添加原代码 注释
-        code = code .. '\n//'.. line .. '\n'
+        -- code = code .. '\n//'.. line .. '\n'
         table.insert(self.compiled, code)
     end -- for line
 end

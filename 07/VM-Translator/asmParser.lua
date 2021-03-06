@@ -85,7 +85,9 @@ function Parser:replaceSymbol()
     self.symbolLessCode = self.simplifiedCode:gsub("%([^)]+%)", "")
     for k, v in pairs(self.symbols) do
         -- print(k, v)
-        self.symbolLessCode = self.symbolLessCode:gsub(k, tostring(v))
+        -- self.symbolLessCode = self.symbolLessCode:gsub(k, tostring(v))
+        -- 改为全字匹配，只有当结尾是 ) 或者 换行符的时候，才进行替换
+        self.symbolLessCode = self.symbolLessCode:gsub('('.. k ..')([%)\r\n])', v..'%2') 
     end
 end
 
@@ -99,6 +101,11 @@ function Parser:parse()
             commandType = "A"
             -- 从立即数转换为 15 位二进制数
             local num = tonumber(string.sub(line, 2))
+
+            -- 出bug，提前按文本替换标签，导致最后得到的数字为。。
+            if num == nil then
+                print(line)
+            end
             code = "0" .. tobinary(num, 15)
         else
             commandType = "C"
